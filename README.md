@@ -1,22 +1,75 @@
-# Real-Time Payments Fraud Detection Engine (Razorpay Builderthon)
+# React + TypeScript + Vite
 
-An enterprise-grade transaction risk scoring and fraud mitigation subsystem designed to detect and block high-velocity card/device hijacking attacks in under 100ms.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## 🚀 Key Architectural Features
-- **Velocity Tracking Engine:** Employs optimized sliding-window database aggregates via JPQL to track high-frequency transaction bursts.
-- **Fingerprint Cross-Matching:** Uses `cardFingerprint` and `deviceFingerprint` cardinality checks to detect multi-accounting and account takeover (ATO) patterns.
-- **Automated Mitigation:** Dynamically transitions operational state guidelines from `APPROVE` to `BLOCK` upon threat threshold violations.
+Currently, two official plugins are available:
 
-## 🛠️ Tech Stack
-- **Backend:** Java 17, Spring Boot, Spring Data JPA
-- **Database:** In-Memory H2 Engine (Simulating low-latency indexing context)
-- **API Architecture:** RESTful Pattern with strict DTO-driven request scoping
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-## 📊 Live Verification Test Scenario
-When firing immediate subsequent payloads for a target asset `safe_user_101`, the system transitions dynamically:
-1. **Initial Profile:** Score `0.05` -> `APPROVE` (Baseline operational profile)
-2. **Breach Execution:** Score `0.98` -> `BLOCK` (Velocity Threshold Breached)
+## React Compiler
 
-## 💻 How to Run & Verify Locally
-1. Start the application using your IDE or terminal: `.\mvnw spring-boot:run`
-2. Fire a standard transaction payload to: `POST http://localhost:8080/api/v1/risk/assess`
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+
+```
+
+You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+
+```
