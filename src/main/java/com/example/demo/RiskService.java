@@ -7,78 +7,51 @@ import java.util.Map;
 
 @Service
 public class RiskService {
-
     private final TransactionRiskRepository repository;
+    private final RiskEngine riskEngine;
 
-    public RiskService(TransactionRiskRepository repository) {
+    public RiskService(TransactionRiskRepository repository, RiskEngine riskEngine) {
         this.repository = repository;
+        this.riskEngine = riskEngine;
     }
 
     public Map<String, Object> evaluateRisk(TransactionRequest request) {
-        // 1. Instantly log this transaction attempt into the H2 Engine to capture real-time telemetry
-        Transaction currentTx = new Transaction(
-            request.getUserId(),
-            request.getAmount(),
-            request.getIpAddress(),
-            request.getCardFingerprint(),
-            LocalDateTime.now()
-        );
-        repository.save(currentTx);
+        validate(request);
 
-        // 2. Query historical sliding windows directly from your database
-        
-        LocalDateTime sixtySecondsAgo = LocalDateTime.now().minusMinutes(1);
-        long velocityCount = repository.countRecentTransactions(request.getUserId(), sixtySecondsAgo);
-        long deviceSharingCount = repository.countDistinctUsersOnDevice(request.getCardFingerprint());
+        LocalDateTime now = LocalDateTime.now();
+        repository.save(new Transaction(
+                request.getUserId(), request.getAmount(), request.getIpAddress(),
+                request.getCardFingerprint(), now));
 
-        // 3. Statistical Risk Model Weights
-        double riskScore = 0.05; // Trusted profile base score
+        long velocityCount = repository.countRecentTransactions(
+                request.getUserId(), now.minusSeconds(60));
+        long deviceSharingCount = repository.countDistinctUsersOnDevice(
+                request.getCardFingerprint());
 
-        // Vector A: High Checkout Velocity (Classic Carding Bot signature)
-        if (velocityCount > 3) {
-            riskScore += 0.35 * (velocityCount / 3.0);
-        }
+        RiskAssessment assessment = riskEngine.assess(request, velocityCount, deviceSharingCount);
 
-        // Vector B: Account Takeover Fingerprinting (Multiple users multiplexed on one device ID)
-        if (deviceSharingCount > 1) {
-            riskScore += 0.40;
-        }
-
-        // Vector C: Anomalous High Ticket Volume Check
-        if (request.getAmount() > 150000) {
-            riskScore += 0.25;
-        }
-
-        // Keep the floating point safely bounded between 0.0 and 1.0
-        riskScore = Math.min(riskScore, 1.0);
-
-        // 4. Determine Razorpay Workflow Enforcement Verdicts
-        String recommendation;
-        String actionReason;
-
-        if (riskScore >= 0.75) {
-            recommendation = "BLOCK";
-            actionReason = "Velocity threshold breached. Automated transaction mitigation protocol engaged.";
-        } else if (riskScore >= 0.40) {
-            recommendation = "CHALLENGE";
-            actionReason = "Anomalous patterns flagged. Requiring multi-factor authentication pass.";
-        } else {
-            recommendation = "APPROVE";
-            actionReason = "Risk metrics within standard operational baseline profiles.";
-        }
-
-        Map<String, Object> analyticalOutput = new HashMap<>();
-        analyticalOutput.put("userId", request.getUserId());
-        analyticalOutput.put("riskScore", Math.round(riskScore * 100.0) / 100.0);
-        analyticalOutput.put("recommendation", recommendation);
-        analyticalOutput.put("reason", actionReason);
-        
-        // Return metrics proof to show judges your calculations are working dynamically
-        analyticalOutput.put("liveTelemetry", Map.of(
-            "velocityLastMinute", velocityCount,
-            "distinctAccountsOnDevice", deviceSharingCount
+        Map<String, Object> response = new HashMap<>();
+        response.put("userId", request.getUserId());
+        response.put("riskScore", assessment.riskScore());
+        response.put("recommendation", assessment.recommendation());
+        response.put("reason", assessment.reason());
+        response.put("rules", assessment.rules());
+        response.put("liveTelemetry", Map.of(
+                "velocityLastMinute", velocityCount,
+                "distinctAccountsOnDevice", deviceSharingCount
         ));
+        return response;
+    }
 
-        return analyticalOutput;
+    private void validate(TransactionRequest request) {
+        if (request == null) throw new IllegalArgumentException("Request body is required.");
+        if (request.getUserId() == null || request.getUserId().isBlank())
+            throw new IllegalArgumentException("userId is required.");
+        if (request.getAmount() < 0)
+            throw new IllegalArgumentException("amount must be non-negative.");
+        if (request.getIpAddress() == null || request.getIpAddress().isBlank())
+            throw new IllegalArgumentException("ipAddress is required.");
+        if (request.getCardFingerprint() == null || request.getCardFingerprint().isBlank())
+            throw new IllegalArgumentException("cardFingerprint is required.");
     }
 }
