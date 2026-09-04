@@ -6,8 +6,8 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/risk")
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:4173"})
 public class RiskController {
-
     private final RiskService riskService;
 
     public RiskController(RiskService riskService) {
@@ -16,7 +16,11 @@ public class RiskController {
 
     @PostMapping("/assess")
     public ResponseEntity<Map<String, Object>> evaluateTransaction(@RequestBody TransactionRequest request) {
-        Map<String, Object> response = riskService.evaluateRisk(request);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(riskService.evaluateRisk(request));
+    }
+
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> health() {
+        return ResponseEntity.ok(Map.of("status", "UP", "service", "RazorGuard Risk Engine"));
     }
 }
