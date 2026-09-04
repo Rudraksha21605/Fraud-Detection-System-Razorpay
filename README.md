@@ -138,3 +138,7 @@ The project separates presentation, orchestration, scoring and persistence. That
 - H2
 - Maven
 - Java 17
+
+- ## Dashboard
+
+![RazorGuard Dashboard](dashboard.png)
